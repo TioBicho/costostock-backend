@@ -1,0 +1,5 @@
+# SOLO DESARROLLO. Estos valores son públicos (están en el repositorio): no los uses en producción.
+auth:
+  token-key: ${AUTH_TOKEN_KEY:l6+6NQu9fZnUSJfcn958ugivtCQjTm3Xs+oEVBVKkE0=}
+  admin-email: ${ADMIN_EMAIL:admin@costostock.cl}
+  admin-password: ${ADMIN_PASSWORD:Admin12345}

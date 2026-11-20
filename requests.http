@@ -1,0 +1,92 @@
+### Registrar cliente
+POST http://localhost:8081/api/auth/register
+Content-Type: application/json
+
+{
+  "correo": "ana@mail.cl",
+  "password": "clave12345",
+  "nombre": "Ana Pérez",
+  "telefono": "+56 9 1111 2222"
+}
+
+### Login cliente (guarda los tokens en variables)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "ana@mail.cl", "password": "clave12345" }
+
+> {%
+    client.global.set("access", response.body.accessToken);
+    client.global.set("refresh", response.body.refreshToken);
+%}
+
+### Mi perfil
+GET http://localhost:8081/api/auth/me
+Authorization: Bearer {{access}}
+
+### Renovar tokens (rota el refresh token)
+POST http://localhost:8081/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh}}" }
+
+> {%
+    client.global.set("access", response.body.accessToken);
+    client.global.set("refresh", response.body.refreshToken);
+%}
+
+### Cambiar contraseña
+POST http://localhost:8081/api/auth/change-password
+Authorization: Bearer {{access}}
+Content-Type: application/json
+
+{ "currentPassword": "clave12345", "newPassword": "otraClave123" }
+
+### Cerrar sesión
+POST http://localhost:8081/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh}}" }
+
+### Registrar vendedor (queda PENDIENTE)
+POST http://localhost:8081/api/auth/register
+Content-Type: application/json
+
+{
+  "correo": "tienda@mail.cl",
+  "password": "clave12345",
+  "nombre": "Tienda Central",
+  "role": "VENDEDOR",
+  "ficha": {
+    "businessRut": "76.123.456-7",
+    "legalName": "Tienda Central SpA",
+    "businessActivity": "Venta de alimentos",
+    "activityStartDate": "2020-03-01",
+    "region": "Valparaíso",
+    "commune": "Valparaíso",
+    "street": "Av. Pedro Montt 1820",
+    "municipalPatentNumber": "PAT-12345",
+    "sanitaryResolutionNumber": "RES-6789"
+  }
+}
+
+### Login admin (perfil dev: admin@costostock.cl / Admin12345)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "admin@costostock.cl", "password": "Admin12345" }
+
+> {%
+    client.global.set("admin_access", response.body.accessToken);
+%}
+
+### Solicitudes pendientes (admin)
+GET http://localhost:8081/api/admin/requests
+Authorization: Bearer {{admin_access}}
+
+### Aprobar vendedor (cambia el id por el de la lista anterior)
+PATCH http://localhost:8081/api/admin/users/2/status
+Authorization: Bearer {{admin_access}}
+Content-Type: application/json
+
+{ "status": "APROBADA" }

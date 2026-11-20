@@ -1,0 +1,28 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  profiles:
+    # Por defecto "dev" para correr con un clic en IntelliJ.
+    # En producción define SPRING_PROFILES_ACTIVE=prod
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/authdb}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+auth:
+  # Clave AES de 256 bits en Base64. Sin valor por defecto: fuera del perfil dev es obligatoria.
+  # Generar con:  openssl rand -base64 32
+  token-key: ${AUTH_TOKEN_KEY}
+  access-ttl-minutes: ${ACCESS_TTL_MINUTES:15}
+  refresh-ttl-days: ${REFRESH_TTL_DAYS:7}
+  # Admin inicial (opcional). Si ambos vienen definidos se crea al arrancar.
+  admin-email: ${ADMIN_EMAIL:}
+  admin-password: ${ADMIN_PASSWORD:}
