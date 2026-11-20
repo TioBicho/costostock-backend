@@ -1,64 +1,100 @@
-### Registrar cliente
+### Este archivo se puede ejecutar completo ("Run all") las veces que quieras:
+### cada ejecución crea un cliente y un vendedor NUEVOS, así no choca con datos anteriores.
+
+### 1. Registrar cliente (correo nuevo en cada ejecución)
+< {%
+    client.global.set("email", "cliente" + Date.now() + "@mail.cl");
+%}
 POST http://localhost:8081/api/auth/register
 Content-Type: application/json
 
 {
-  "correo": "ana@mail.cl",
+  "correo": "{{email}}",
   "password": "clave12345",
   "nombre": "Ana Pérez",
   "telefono": "+56 9 1111 2222"
 }
 
-### Login cliente (guarda los tokens en variables)
+> {%
+    client.test("registro ok (201)", function () {
+        client.assert(response.status === 201, "Registro falló: " + JSON.stringify(response.body));
+    });
+%}
+
+### 2. Login cliente (guarda los tokens en variables)
 POST http://localhost:8081/api/auth/login
 Content-Type: application/json
 
-{ "correo": "ana@mail.cl", "password": "clave12345" }
+{ "correo": "{{email}}", "password": "clave12345" }
 
 > {%
+    client.test("login ok (200)", function () {
+        client.assert(response.status === 200, "Login falló: " + JSON.stringify(response.body));
+    });
     client.global.set("access", response.body.accessToken);
     client.global.set("refresh", response.body.refreshToken);
 %}
 
-### Mi perfil
+### 3. Mi perfil
 GET http://localhost:8081/api/auth/me
 Authorization: Bearer {{access}}
 
-### Renovar tokens (rota el refresh token)
+> {%
+    client.test("me ok (200)", function () {
+        client.assert(response.status === 200, "me falló: " + JSON.stringify(response.body));
+    });
+%}
+
+### 4. Renovar tokens (rota el refresh token)
 POST http://localhost:8081/api/auth/refresh
 Content-Type: application/json
 
 { "refreshToken": "{{refresh}}" }
 
 > {%
+    client.test("refresh ok (200)", function () {
+        client.assert(response.status === 200, "refresh falló: " + JSON.stringify(response.body));
+    });
     client.global.set("access", response.body.accessToken);
     client.global.set("refresh", response.body.refreshToken);
 %}
 
-### Cambiar contraseña
+### 5. Cambiar contraseña (devuelve tokens nuevos; los anteriores quedan inválidos)
 POST http://localhost:8081/api/auth/change-password
 Authorization: Bearer {{access}}
 Content-Type: application/json
 
 { "currentPassword": "clave12345", "newPassword": "otraClave123" }
 
-### Cerrar sesión
+> {%
+    client.test("cambio de contraseña ok (200)", function () {
+        client.assert(response.status === 200, "change-password falló: " + JSON.stringify(response.body));
+    });
+    client.global.set("access", response.body.accessToken);
+    client.global.set("refresh", response.body.refreshToken);
+%}
+
+### 6. Cerrar sesión (revoca el refresh token)
 POST http://localhost:8081/api/auth/logout
 Content-Type: application/json
 
 { "refreshToken": "{{refresh}}" }
 
-### Registrar vendedor (queda PENDIENTE)
+### 7. Registrar vendedor (queda PENDIENTE; correo y RUT nuevos en cada ejecución)
+< {%
+    client.global.set("seller_email", "tienda" + Date.now() + "@mail.cl");
+    client.global.set("seller_rut", "76-" + Date.now());
+%}
 POST http://localhost:8081/api/auth/register
 Content-Type: application/json
 
 {
-  "correo": "tienda@mail.cl",
+  "correo": "{{seller_email}}",
   "password": "clave12345",
   "nombre": "Tienda Central",
   "role": "VENDEDOR",
   "ficha": {
-    "businessRut": "76.123.456-7",
+    "businessRut": "{{seller_rut}}",
     "legalName": "Tienda Central SpA",
     "businessActivity": "Venta de alimentos",
     "activityStartDate": "2020-03-01",
@@ -70,23 +106,63 @@ Content-Type: application/json
   }
 }
 
-### Login admin (perfil dev: admin@costostock.cl / Admin12345)
+> {%
+    client.test("registro de vendedor ok (201)", function () {
+        client.assert(response.status === 201, "Registro falló: " + JSON.stringify(response.body));
+    });
+    client.global.set("seller_id", response.body.id);
+%}
+
+### 8. Login del vendedor: debe responder 403 (pendiente de aprobación)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "{{seller_email}}", "password": "clave12345" }
+
+> {%
+    client.test("vendedor pendiente => 403", function () {
+        client.assert(response.status === 403, "Se esperaba 403 y fue " + response.status);
+    });
+%}
+
+### 9. Login admin (perfil dev: admin@costostock.cl / Admin12345)
 POST http://localhost:8081/api/auth/login
 Content-Type: application/json
 
 { "correo": "admin@costostock.cl", "password": "Admin12345" }
 
 > {%
+    client.test("login admin ok (200)", function () {
+        client.assert(response.status === 200, "Login admin falló: " + JSON.stringify(response.body));
+    });
     client.global.set("admin_access", response.body.accessToken);
 %}
 
-### Solicitudes pendientes (admin)
+### 10. Solicitudes pendientes (admin)
 GET http://localhost:8081/api/admin/requests
 Authorization: Bearer {{admin_access}}
 
-### Aprobar vendedor (cambia el id por el de la lista anterior)
-PATCH http://localhost:8081/api/admin/users/2/status
+### 11. Aprobar al vendedor recién registrado
+PATCH http://localhost:8081/api/admin/users/{{seller_id}}/status
 Authorization: Bearer {{admin_access}}
 Content-Type: application/json
 
 { "status": "APROBADA" }
+
+> {%
+    client.test("aprobación ok (200)", function () {
+        client.assert(response.status === 200, "Aprobación falló: " + JSON.stringify(response.body));
+    });
+%}
+
+### 12. Login del vendedor ya aprobado: debe responder 200
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "{{seller_email}}", "password": "clave12345" }
+
+> {%
+    client.test("vendedor aprobado => 200", function () {
+        client.assert(response.status === 200, "Se esperaba 200 y fue " + response.status);
+    });
+%}
