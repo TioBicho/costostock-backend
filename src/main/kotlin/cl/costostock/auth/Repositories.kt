@@ -8,6 +8,9 @@ interface UserRepository : JpaRepository<UserEntity, Long> {
     fun findByCorreo(correo: String): UserEntity?
     fun existsByFichaBusinessRut(rut: String): Boolean
     fun findByStatusOrderByRequestedAtDesc(status: AccountStatus): List<UserEntity>
+
+    /** Todas las cuentas que pidieron aprobación (pendientes, aprobadas y rechazadas). */
+    fun findByRequestedAtIsNotNullOrderByRequestedAtDesc(): List<UserEntity>
 }
 
 interface RefreshTokenRepository : JpaRepository<RefreshTokenEntity, Long> {

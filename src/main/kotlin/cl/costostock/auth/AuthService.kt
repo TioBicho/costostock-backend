@@ -117,6 +117,15 @@ class AuthService(
     @Transactional(readOnly = true)
     fun me(authHeader: String?): UserResponse = authenticate(authHeader).toResponse()
 
+    /** Cambia nombre y teléfono del propio usuario (el rol y el estado no se pueden tocar aquí). */
+    @Transactional
+    fun updateProfile(authHeader: String?, req: UpdateProfileRequest): UserResponse {
+        val user = authenticate(authHeader)
+        user.nombre = req.nombre.trim()
+        user.telefono = req.telefono.trim()
+        return users.save(user).toResponse()
+    }
+
     @Transactional
     fun changePassword(authHeader: String?, req: ChangePasswordRequest): TokenResponse {
         val user = authenticate(authHeader)
@@ -132,15 +141,25 @@ class AuthService(
 
     // ---------- Administración ----------
 
+    /** Solicitudes de cuenta. Por defecto solo las PENDIENTES; con [todas] incluye las ya revisadas. */
     @Transactional(readOnly = true)
-    fun pendingRequests(authHeader: String?): List<UserResponse> {
+    fun pendingRequests(authHeader: String?, todas: Boolean = false): List<UserResponse> {
         requireAdmin(authenticate(authHeader))
-        return users.findByStatusOrderByRequestedAtDesc(AccountStatus.PENDIENTE).map { it.toResponse() }
+        val solicitudes = if (todas) {
+            users.findByRequestedAtIsNotNullOrderByRequestedAtDesc()
+        } else {
+            users.findByStatusOrderByRequestedAtDesc(AccountStatus.PENDIENTE)
+        }
+        return solicitudes.map { it.toResponse() }
     }
 
     @Transactional
     fun setStatus(authHeader: String?, userId: Long, status: AccountStatus): UserResponse {
-        requireAdmin(authenticate(authHeader))
+        val admin = authenticate(authHeader)
+        requireAdmin(admin)
+        if (admin.id == userId) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "No puedes cambiar el estado de tu propia cuenta")
+        }
         if (status == AccountStatus.PENDIENTE) {
             throw ApiException(HttpStatus.BAD_REQUEST, "El estado debe ser APROBADA o RECHAZADA")
         }

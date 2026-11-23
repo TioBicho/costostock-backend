@@ -41,13 +41,23 @@ data class ChangePasswordRequest(
 
 data class StatusRequest(val status: AccountStatus)
 
+/** PUT /api/auth/me: el usuario solo puede cambiar su nombre y teléfono. */
+data class UpdateProfileRequest(
+    @field:NotBlank @field:Size(min = 2, max = 40) val nombre: String,
+    @field:Size(max = 20) val telefono: String = ""
+)
+
 data class UserResponse(
     val id: Long,
     val correo: String,
     val nombre: String,
     val telefono: String,
     val role: Role,
-    val status: AccountStatus
+    val status: AccountStatus,
+    /** Cuándo pidió la cuenta, en milisegundos (null si no necesitó aprobación). */
+    val requestedAt: Long?,
+    /** Ficha del negocio (solo vendedores): la revisa el administrador antes de aprobar. */
+    val ficha: SellerFichaDto?
 )
 
 data class TokenResponse(
@@ -62,5 +72,19 @@ data class TokenResponse(
 data class ErrorResponse(val error: String)
 
 fun UserEntity.toResponse() = UserResponse(
-    id = id!!, correo = correo, nombre = nombre, telefono = telefono, role = role, status = status
+    id = id!!, correo = correo, nombre = nombre, telefono = telefono, role = role, status = status,
+    requestedAt = requestedAt?.toEpochMilli(),
+    ficha = ficha?.toDto()
+)
+
+fun SellerFicha.toDto() = SellerFichaDto(
+    businessRut = businessRut,
+    legalName = legalName,
+    businessActivity = businessActivity,
+    activityStartDate = activityStartDate,
+    region = region,
+    commune = commune,
+    street = street,
+    municipalPatentNumber = municipalPatentNumber,
+    sanitaryResolutionNumber = sanitaryResolutionNumber
 )

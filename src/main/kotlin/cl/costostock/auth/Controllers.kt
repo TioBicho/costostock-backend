@@ -4,6 +4,7 @@ import jakarta.validation.Valid
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.*
 
@@ -29,6 +30,12 @@ class AuthController(private val auth: AuthService) {
     fun me(@RequestHeader("Authorization", required = false) authorization: String?) =
         auth.me(authorization)
 
+    @PutMapping("/me")
+    fun updateMe(
+        @RequestHeader("Authorization", required = false) authorization: String?,
+        @Valid @RequestBody req: UpdateProfileRequest
+    ) = auth.updateProfile(authorization, req)
+
     @PostMapping("/change-password")
     fun changePassword(
         @RequestHeader("Authorization", required = false) authorization: String?,
@@ -40,9 +47,12 @@ class AuthController(private val auth: AuthService) {
 @RequestMapping("/api/admin")
 class AdminController(private val auth: AuthService) {
 
+    /** ?todas=true incluye también las solicitudes ya aprobadas o rechazadas (historial). */
     @GetMapping("/requests")
-    fun pending(@RequestHeader("Authorization", required = false) authorization: String?) =
-        auth.pendingRequests(authorization)
+    fun pending(
+        @RequestHeader("Authorization", required = false) authorization: String?,
+        @RequestParam(name = "todas", defaultValue = "false") todas: Boolean
+    ) = auth.pendingRequests(authorization, todas)
 
     @PatchMapping("/users/{id}/status")
     fun setStatus(
@@ -64,6 +74,11 @@ class ApiExceptionHandler {
         val msg = e.bindingResult.fieldErrors.joinToString("; ") { "${it.field}: ${it.defaultMessage}" }
         return ResponseEntity.badRequest().body(ErrorResponse(msg))
     }
+
+    /** JSON mal formado o un valor que no existe (por ejemplo un rol o estado mal escrito). */
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadable(e: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.badRequest().body(ErrorResponse("El cuerpo de la petición no es válido"))
 
     /** Cubre la carrera de dos registros simultáneos con el mismo correo o RUT. */
     @ExceptionHandler(DataIntegrityViolationException::class)

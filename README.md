@@ -64,9 +64,13 @@ Si quieres usar Gradle desde la terminal, ejecuta una vez `gradle wrapper` con G
 | POST | `/api/auth/refresh` | Rota el refresh token y emite tokens nuevos |
 | POST | `/api/auth/logout` | Revoca el refresh token |
 | GET | `/api/auth/me` | Datos del usuario (requiere `Authorization: Bearer …`) |
+| PUT | `/api/auth/me` | Cambia nombre y teléfono del usuario: `{"nombre": "...", "telefono": "..."}` |
 | POST | `/api/auth/change-password` | Cambia clave e invalida las sesiones anteriores |
-| GET | `/api/admin/requests` | Solicitudes pendientes (ADMINISTRADOR) |
-| PATCH | `/api/admin/users/{id}/status` | `{"status":"APROBADA"}` o `"RECHAZADA"` (ADMINISTRADOR) |
+| GET | `/api/admin/requests` | Solicitudes pendientes, con la ficha del vendedor (ADMINISTRADOR). `?todas=true` incluye también las ya aprobadas o rechazadas |
+| PATCH | `/api/admin/users/{id}/status` | `{"status":"APROBADA"}` o `"RECHAZADA"` (ADMINISTRADOR; no sobre su propia cuenta) |
+
+Los usuarios se devuelven con `id`, `correo`, `nombre`, `telefono`, `role`, `status`, `requestedAt` (milisegundos, solo si pidió aprobación) y `ficha` (solo vendedores).
+Los errores siempre salen como `{"error": "mensaje para mostrar"}`.
 
 ```bash
 curl -X POST localhost:8081/api/auth/register -H 'Content-Type: application/json' \
@@ -80,7 +84,15 @@ curl localhost:8081/api/auth/me -H "Authorization: Bearer <accessToken>"
 
 ## Integración con la app Android
 
-- Desde el emulador, el host es `http://10.0.2.2:8081`.
+La app (rama con la conexión a este servicio) ya trae Retrofit configurado. Solo hay que apuntarla a tu PC:
+
+- **Emulador de Android Studio:** `http://10.0.2.2:8081/` (10.0.2.2 es tu PC vista desde el emulador).
+- **Celular físico:** `http://IP-DE-TU-PC:8081/`. El PC y el celular deben estar en la misma WiFi; la IP se ve con
+  `ipconfig` (Windows, "Dirección IPv4"). Para comprobar que el celular llega al servicio, abre en su navegador
+  `http://IP-DE-TU-PC:8081/api/auth/me`: debe mostrar `{"error":"Falta el token"}`.
+  Si no carga: permite Java en el Firewall de Windows (redes privadas) y revisa que la WiFi del PC esté como "Privada".
+  Las WiFi de universidades o de invitados suelen bloquear la conexión entre equipos: usa el hotspot del celular.
+- Desde la app no se pueden registrar administradores: el único admin es el que se crea al arrancar.
 - Guarda los tokens en DataStore o EncryptedSharedPreferences, nunca en texto plano.
 - Si una llamada devuelve 401, llama a `/refresh` una vez y reintenta; si también falla, manda al login.
 - Si otro microservicio necesita validar el token, tiene que compartir la clave `AUTH_TOKEN_KEY`

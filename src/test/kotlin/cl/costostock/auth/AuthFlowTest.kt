@@ -2,6 +2,7 @@ package cl.costostock.auth
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -168,5 +169,67 @@ class AuthFlowTest(
             .andExpect(status().isOk)
 
         login(correo).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `editar perfil cambia nombre y telefono`() {
+        val access = registerAndLogin()["accessToken"].asText()
+
+        val updated = json(
+            send(HttpMethod.PUT, "/api/auth/me", mapOf("nombre" to "Ana María", "telefono" to "+56 9 8765 4321"), access)
+                .andExpect(status().isOk)
+        )
+        assertEquals("Ana María", updated["nombre"].asText())
+
+        val me = json(send(HttpMethod.GET, "/api/auth/me", bearer = access).andExpect(status().isOk))
+        assertEquals("+56 9 8765 4321", me["telefono"].asText())
+        assertEquals("CLIENTE", me["role"].asText())
+
+        send(HttpMethod.PUT, "/api/auth/me", mapOf("nombre" to "Sin Token", "telefono" to "123")).andExpect(status().isUnauthorized)
+        send(HttpMethod.PUT, "/api/auth/me", mapOf("nombre" to "", "telefono" to "123"), access).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `las solicitudes traen la ficha y el historial`() {
+        val correo = uniqueEmail()
+        val rut = "77-${UUID.randomUUID().toString().take(6)}"
+        val sellerId = json(
+            send(HttpMethod.POST, "/api/auth/register", sellerBody(correo, rut)).andExpect(status().isCreated)
+        )["id"].asLong()
+        val adminAccess = json(login("admin@test.cl", "Admin12345").andExpect(status().isOk))["accessToken"].asText()
+
+        val pending = json(send(HttpMethod.GET, "/api/admin/requests", bearer = adminAccess).andExpect(status().isOk))
+        val solicitud = pending.first { it["id"].asLong() == sellerId }
+        assertEquals(rut, solicitud["ficha"]["businessRut"].asText())
+        assertEquals("Tienda SpA", solicitud["ficha"]["legalName"].asText())
+        assertTrue(solicitud["requestedAt"].asLong() > 0)
+
+        send(HttpMethod.PATCH, "/api/admin/users/$sellerId/status", mapOf("status" to "RECHAZADA"), adminAccess)
+            .andExpect(status().isOk)
+
+        // Ya no está entre las pendientes, pero sí en el historial (?todas=true)
+        val pendientes = json(send(HttpMethod.GET, "/api/admin/requests", bearer = adminAccess))
+        assertTrue(pendientes.none { it["id"].asLong() == sellerId })
+        val todas = json(send(HttpMethod.GET, "/api/admin/requests?todas=true", bearer = adminAccess).andExpect(status().isOk))
+        assertEquals("RECHAZADA", todas.first { it["id"].asLong() == sellerId }["status"].asText())
+    }
+
+    @Test
+    fun `el admin no puede cambiar su propio estado`() {
+        val admin = json(login("admin@test.cl", "Admin12345").andExpect(status().isOk))
+        val adminId = admin["user"]["id"].asLong()
+        send(HttpMethod.PATCH, "/api/admin/users/$adminId/status", mapOf("status" to "RECHAZADA"),
+            admin["accessToken"].asText())
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `un estado mal escrito responde 400 con mensaje`() {
+        val adminAccess = json(login("admin@test.cl", "Admin12345").andExpect(status().isOk))["accessToken"].asText()
+        val body = json(
+            send(HttpMethod.PATCH, "/api/admin/users/999/status", mapOf("status" to "APROBADO"), adminAccess)
+                .andExpect(status().isBadRequest)
+        )
+        assertTrue(body["error"].asText().isNotBlank())
     }
 }

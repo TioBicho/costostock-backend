@@ -35,6 +35,13 @@ Content-Type: application/json
     client.global.set("refresh", response.body.refreshToken);
 %}
 
+### Editar mi perfil (nombre y teléfono)
+PUT http://localhost:8081/api/auth/me
+Authorization: Bearer {{access}}
+Content-Type: application/json
+
+{ "nombre": "Ana María Pérez", "telefono": "+56 9 8765 4321" }
+
 ### Cambiar contraseña
 POST http://localhost:8081/api/auth/change-password
 Authorization: Bearer {{access}}
@@ -82,6 +89,10 @@ Content-Type: application/json
 
 ### Solicitudes pendientes (admin)
 GET http://localhost:8081/api/admin/requests
+Authorization: Bearer {{admin_access}}
+
+### Todas las solicitudes, incluidas las ya revisadas (admin)
+GET http://localhost:8081/api/admin/requests?todas=true
 Authorization: Bearer {{admin_access}}
 
 ### Aprobar vendedor (cambia el id por el de la lista anterior)
