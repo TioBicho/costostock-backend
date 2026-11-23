@@ -1,0 +1,151 @@
+### 1. Login del administrador en ms-auth (perfil dev: admin@costostock.cl / Admin12345)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "admin@costostock.cl", "password": "Admin12345" }
+
+> {%
+    client.global.set("admin", response.body.accessToken);
+%}
+
+### 2. Registrar un VENDEDOR en ms-auth (queda PENDIENTE). Si ya existe, responde 409: sigue igual.
+POST http://localhost:8081/api/auth/register
+Content-Type: application/json
+
+{
+  "correo": "vendedor@mail.cl",
+  "password": "clave12345",
+  "nombre": "Tienda Central",
+  "role": "VENDEDOR",
+  "ficha": {
+    "businessRut": "76.123.456-0",
+    "legalName": "Tienda Central SpA",
+    "businessActivity": "Venta de alimentos",
+    "activityStartDate": "01/03/2020",
+    "region": "Valparaíso",
+    "commune": "Valparaíso",
+    "street": "Av. Pedro Montt 1820",
+    "municipalPatentNumber": "PAT-12345",
+    "sanitaryResolutionNumber": "RES-6789"
+  }
+}
+
+> {%
+    if (response.status === 201) client.global.set("vendedorId", response.body.id);
+%}
+
+### 3. El administrador aprueba al vendedor
+PATCH http://localhost:8081/api/admin/users/{{vendedorId}}/status
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "status": "APROBADA" }
+
+### 4. Login del vendedor
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "vendedor@mail.cl", "password": "clave12345" }
+
+> {%
+    client.global.set("vendedor", response.body.accessToken);
+%}
+
+### 5. Registrar y hacer login de un CLIENTE (para comprobar que NO entra)
+POST http://localhost:8081/api/auth/register
+Content-Type: application/json
+
+{ "correo": "cliente@mail.cl", "password": "clave12345", "nombre": "Ana Cliente" }
+
+### 6. Login del cliente
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "cliente@mail.cl", "password": "clave12345" }
+
+> {%
+    client.global.set("cliente", response.body.accessToken);
+%}
+
+
+### 7. Listar productos (VENDEDOR) -> 200 (trae 3 de ejemplo en el perfil dev)
+GET http://localhost:8082/api/productos
+Authorization: Bearer {{vendedor}}
+
+### 8. Crear producto con oferta de 60 minutos (VENDEDOR) -> 201
+POST http://localhost:8082/api/productos
+Authorization: Bearer {{vendedor}}
+Content-Type: application/json
+
+{
+  "title": "Pan amasado x6",
+  "description": "Horneado hoy",
+  "category": "Panadería",
+  "storeName": "Tienda Central",
+  "address": "Av. Pedro Montt 1820",
+  "originalPrice": 2000,
+  "offerPrice": 1200,
+  "offerDurationMinutes": 60,
+  "stock": 10,
+  "imageUrl": "",
+  "pickupHours": "Lunes a viernes 9:00 a 18:00",
+  "co2SavedKg": 0.5
+}
+
+> {%
+    client.global.set("productoId", response.body.id);
+%}
+
+### 9. Ver un producto
+GET http://localhost:8082/api/productos/{{productoId}}
+Authorization: Bearer {{vendedor}}
+
+### 10. Solo mis productos, o buscar por texto
+GET http://localhost:8082/api/productos?mios=true&q=pan
+Authorization: Bearer {{vendedor}}
+
+### 11. Editar el producto (sin offerDurationMinutes se mantiene el fin de la oferta)
+PUT http://localhost:8082/api/productos/{{productoId}}
+Authorization: Bearer {{vendedor}}
+Content-Type: application/json
+
+{
+  "title": "Pan amasado x6 (integral)",
+  "category": "Panadería",
+  "storeName": "Tienda Central",
+  "originalPrice": 2000,
+  "offerPrice": 1000,
+  "stock": 7
+}
+
+### 12. Un CLIENTE intenta listar -> 403
+GET http://localhost:8082/api/productos
+Authorization: Bearer {{cliente}}
+
+### 13. Un CLIENTE intenta crear -> 403
+POST http://localhost:8082/api/productos
+Authorization: Bearer {{cliente}}
+Content-Type: application/json
+
+{ "title": "No debería", "category": "X", "storeName": "X", "originalPrice": 100, "stock": 1 }
+
+### 14. Sin token -> 401
+GET http://localhost:8082/api/productos
+
+### 15. El vendedor intenta editar un producto de ejemplo (no es suyo) -> 403
+PUT http://localhost:8082/api/productos/1
+Authorization: Bearer {{vendedor}}
+Content-Type: application/json
+
+{ "title": "Ajeno", "category": "X", "storeName": "X", "originalPrice": 100, "stock": 1 }
+
+### 16. El administrador sí puede editar cualquiera -> 200
+PUT http://localhost:8082/api/productos/1
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "title": "Pack Yogur Batido 12x120g", "category": "Lácteos", "storeName": "Supermercado Central Valparaíso", "originalPrice": 4990, "stock": 6 }
+
+### 17. Eliminar el producto (VENDEDOR dueño) -> 204
+DELETE http://localhost:8082/api/productos/{{productoId}}
+Authorization: Bearer {{vendedor}}

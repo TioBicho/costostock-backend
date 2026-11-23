@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ms-auth" type="JetRunConfigurationType">
+    <option name="MAIN_CLASS_NAME" value="cl.costostock.auth.AuthServiceApplicationKt" />
+    <module name="ms-auth.main" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
