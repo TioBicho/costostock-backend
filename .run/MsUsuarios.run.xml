@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ms-usuarios" type="JetRunConfigurationType">
+    <option name="MAIN_CLASS_NAME" value="cl.costostock.usuarios.UsuariosApplicationKt" />
+    <module name="ms-usuarios.main" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

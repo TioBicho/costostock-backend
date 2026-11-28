@@ -6,16 +6,21 @@ Backend de la app **Costo Stock**. Cada carpeta `ms-*` es un microservicio indep
 |---|---|---|---|
 | [`ms-auth`](ms-auth) | 8081 | Registro, login y **TOKEN**; perfil; aprobación de vendedores | Público (login/registro); con token (perfil); ADMINISTRADOR (solicitudes) |
 | [`ms-productos`](ms-productos) | 8082 | **CRUD de productos** | Solo **VENDEDOR** o **ADMINISTRADOR** (CLIENTE → 403) |
+| [`ms-usuarios`](ms-usuarios) | 8083 | **Direcciones y preferencias** de cada usuario | Cualquier cuenta con sesión; cada una solo ve y edita lo suyo |
 
 ```text
 costostock-backend/
 ├── settings.gradle.kts      ← junta los microservicios para abrirlos juntos en IntelliJ
-├── .run/                    ← configuraciones de ejecución "ms-auth" y "ms-productos"
+├── .run/                    ← configuraciones de ejecución "ms-auth", "ms-productos" y "ms-usuarios"
 ├── ms-auth/                 ← login y registro (Vicente)
 │   ├── build.gradle.kts
 │   ├── requests.http
 │   └── src/...
-└── ms-productos/            ← CRUD de productos
+├── ms-productos/            ← CRUD de productos
+│   ├── build.gradle.kts
+│   ├── requests.http
+│   └── src/...
+└── ms-usuarios/             ← direcciones y preferencias de cada usuario
     ├── build.gradle.kts
     ├── requests.http
     └── src/...
@@ -36,7 +41,7 @@ Todos los microservicios comparten la clave `AUTH_TOKEN_KEY`. En el perfil de de
 ## Ejecutar en IntelliJ IDEA
 
 1. **File → Open…** y elige **esta carpeta** (`costostock-backend`). Acepta "Trust Project".
-2. Espera la sincronización de Gradle. Aparecen `ms-auth` y `ms-productos` en la pestaña Gradle. La primera vez se descargan Gradle 8.10.2, las librerías y la JDK 17 si no la tienes.
+2. Espera la sincronización de Gradle. Aparecen `ms-auth`, `ms-productos` y `ms-usuarios` en la pestaña Gradle. La primera vez se descargan Gradle 8.10.2, las librerías y la JDK 17 si no la tienes.
 3. **Gradle JVM:** en **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JVM**, elige 17 o 21. Con 24 o 25, Gradle 8.10.2 no sincroniza.
 4. **Ejecuta los dos microservicios:**
    - Elige **ms-auth** arriba a la derecha y presiona ▶. Luego elige **ms-productos** y presiona ▶. Cada uno abre su pestaña en la consola.

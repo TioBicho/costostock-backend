@@ -6,3 +6,4 @@ rootProject.name = "costostock-backend"
 
 includeBuild("ms-auth")
 includeBuild("ms-productos")
+includeBuild("ms-usuarios")

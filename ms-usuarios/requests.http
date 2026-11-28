@@ -1,0 +1,106 @@
+### 1. Registrar un CLIENTE en ms-auth. Si ya existe, responde 409: sigue igual.
+POST http://localhost:8081/api/auth/register
+Content-Type: application/json
+
+{ "correo": "cliente@mail.cl", "password": "clave12345", "nombre": "Ana Cliente", "telefono": "+56 9 1111 2222" }
+
+### 2. Login del cliente (guarda el token en una variable)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "cliente@mail.cl", "password": "clave12345" }
+
+> {%
+    client.global.set("cliente", response.body.accessToken);
+%}
+
+### 3. Login del administrador (perfil dev: admin@costostock.cl / Admin12345)
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{ "correo": "admin@costostock.cl", "password": "Admin12345" }
+
+> {%
+    client.global.set("admin", response.body.accessToken);
+%}
+
+
+### 4. Mis direcciones (vacío al comienzo) -> 200
+GET http://localhost:8083/api/direcciones
+Authorization: Bearer {{cliente}}
+
+### 5. Guardar una dirección (la primera queda como principal) -> 201
+POST http://localhost:8083/api/direcciones
+Authorization: Bearer {{cliente}}
+Content-Type: application/json
+
+{
+  "alias": "Casa",
+  "street": "Av. Pedro Montt 1820",
+  "commune": "Valparaíso",
+  "region": "Valparaíso",
+  "reference": "Depto 5, timbre 2"
+}
+
+> {%
+    client.global.set("direccionId", response.body.id);
+%}
+
+### 6. Guardar otra y marcarla como principal -> 201
+POST http://localhost:8083/api/direcciones
+Authorization: Bearer {{cliente}}
+Content-Type: application/json
+
+{
+  "alias": "Trabajo",
+  "street": "Calle Valparaíso 650",
+  "commune": "Viña del Mar",
+  "region": "Valparaíso",
+  "principal": true
+}
+
+### 7. Ver una dirección
+GET http://localhost:8083/api/direcciones/{{direccionId}}
+Authorization: Bearer {{cliente}}
+
+### 8. Editar la dirección (se envían todos los campos)
+PUT http://localhost:8083/api/direcciones/{{direccionId}}
+Authorization: Bearer {{cliente}}
+Content-Type: application/json
+
+{
+  "alias": "Casa de mis padres",
+  "street": "Av. Libertad 340",
+  "commune": "Viña del Mar",
+  "region": "Valparaíso"
+}
+
+### 9. Mis preferencias (sin guardar devuelve los valores por defecto) -> 200
+GET http://localhost:8083/api/preferencias
+Authorization: Bearer {{cliente}}
+
+### 10. Guardar preferencias -> 200
+PUT http://localhost:8083/api/preferencias
+Authorization: Bearer {{cliente}}
+Content-Type: application/json
+
+{
+  "favoriteCategories": ["Lácteos", "Panadería"],
+  "maxDistanceKm": 10,
+  "offerAlerts": true
+}
+
+### 11. Restablecer preferencias -> 204
+DELETE http://localhost:8083/api/preferencias
+Authorization: Bearer {{cliente}}
+
+### 12. El administrador intenta ver una dirección del cliente -> 403
+GET http://localhost:8083/api/direcciones/{{direccionId}}
+Authorization: Bearer {{admin}}
+
+### 13. Sin token -> 401
+GET http://localhost:8083/api/direcciones
+
+### 14. Eliminar la dirección (dueño) -> 204
+DELETE http://localhost:8083/api/direcciones/{{direccionId}}
+Authorization: Bearer {{cliente}}
